@@ -11,13 +11,13 @@ class QuestionForm(forms.ModelForm):
 
         class Meta:
             model = Question
-            fields = ('question_text',)
+            fields = ('question_text','options_num','correct_num','subject_text')
 
 class ChoiceForm(forms.ModelForm):
 
         class Meta:
             model = Choice
-            fields = ('choice_text',)
+            fields = ('choice_text','correct')
 
 class UserForm(forms.ModelForm):
 

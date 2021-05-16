@@ -68,12 +68,21 @@ def detail(request, question_id):
 
 def results(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
+
     return render(request, 'polls/results.html', {'title':'Resultados de la pregunta:','question': question})
 
 def vote(request, question_id):
+    msg=""
+    msgError =""
     p = get_object_or_404(Question, pk=question_id)
     try:
         selected_choice = p.choice_set.get(pk=request.POST['choice'])
+        if selected_choice.correct == True:
+           msg =  "Correcto"
+           
+        else:
+           msgError = "No es la respuesta correcta"
+    
     except (KeyError, Choice.DoesNotExist):
         # Vuelve a mostrar el form.
         return render(request, 'polls/detail.html', {
@@ -83,38 +92,64 @@ def vote(request, question_id):
     else:
         selected_choice.votes += 1
         selected_choice.save()
+        return render(request, 'polls/detail.html', {'question': p, 'message': msg, 'error_message': msgError})
         # Siempre devolver un HttpResponseRedirect despues de procesar
         # exitosamente el POST de un form. Esto evita que los datos se
         # puedan postear dos veces si el usuario vuelve atras en su browser.
         return HttpResponseRedirect(reverse('results', args=(p.id,)))
 
 def question_new(request):
+        msg = ""
         if request.method == "POST":
             form = QuestionForm(request.POST)
-            if form.is_valid():
+
+
+            if not (int(request.POST["correct_num"]) < int(request.POST["options_num"])):
+                msg = "El numero de respuesta correcta debe ser al menos de 1"
+
+            elif not (2 <= int(request.POST["options_num"]) and 4 >= int(request.POST["options_num"]) ):
+                msg = "El numero de opciones de respuesta debe estar entre 2 y 4"
+           
+            elif form.is_valid():
                 question = form.save(commit=False)
                 question.pub_date=datetime.now()
                 question.save()
+                msg = "Se ha anadido la pregunta correctamente!"
                 #return redirect('detail', pk=question_id)
                 #return render(request, 'polls/index.html', {'title':'Respuestas posibles','question': question})
         else:
             form = QuestionForm()
-        return render(request, 'polls/question_new.html', {'form': form})
+        return render(request, 'polls/question_new.html', {'form': form, 'message' : msg})
 
 def choice_add(request, question_id):
         question = Question.objects.get(id = question_id)
-        if request.method =='POST':
-            form = ChoiceForm(request.POST)
-            if form.is_valid():
+        msg=""
+        msgError=""
+        form = ChoiceForm()
+        if question.options_num <= Choice.objects.filter(question = question_id).count():
+            msgError= "Has superado el maximo de respuestas posibles"
+           
+        elif request.method =='POST':
+             form = ChoiceForm(request.POST)
+             if Choice.correct == True:
+                choice = form.save(commit = False)
+                choice.question = question
+                choice.correct = True
+                choice.vote = 0
+                choice.save()         
+                #form.save()
+                msg = "Respuesta correcta añadida correctamente" 
+             elif form.is_valid():
                 choice = form.save(commit = False)
                 choice.question = question
                 choice.vote = 0
                 choice.save()         
                 #form.save()
+                msg = "Respuesta añadida correctamente" 
         else: 
             form = ChoiceForm()
         #return render_to_response ('choice_new.html', {'form': form, 'poll_id': poll_id,}, context_instance = RequestContext(request),)
-        return render(request, 'polls/choice_new.html', {'title':'Pregunta:'+ question.question_text,'form': form})
+        return render(request, 'polls/choice_new.html', {'title':'Pregunta:'+ question.question_text,'form': form, 'message':msg, 'error_message' : msgError})
 
 def chart(request, question_id):
     q=Question.objects.get(id = question_id)
